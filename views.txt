@@ -1,0 +1,117 @@
+Views:
+
+drop table if exists st
+create table st as select * from values ('ram','ram@xyz.com') as (name,email);
+
+drop view if exists st_view;
+create view st_view as select upper(name),email from st;
+
+select * from st_view
+
+insert into st values ('shyam','shyam@xyz.com');
+
+select * from st_view
+
+
+---
+
+create temp view st_tmp_view as select upper(name) from st;
+
+select * from st_tmp_view
+
+
+
+-----
+Not supported in SQL Warehouse - Try in Community Edition
+
+create global temp view st_gtmp_view as select upper(name) from st;
+
+
+select * from st_gtmp_view
+
+
+-------
+=== To be executed in SQL editor
+
+drop materialized view  if exists st_mt_view
+create materialized view st_mt_view as select upper(name) as uname,email from st;
+
+
+select * from st_mt_view
+
+
+insert into st values ('shyam','shyam@xyz.com');
+
+refresh materialized view st_mt_view;
+select * from st_mt_view;
+
+
+------------
+Dynamic View
+-----------
+
+create view mail_redacted_vw1 as
+select
+  `upper(name)` as name,
+  case
+    when 'hr_user@xyz.com' = 'hr_user@xyz.com' then email
+    else regexp_extract(email, '^.*@(.*)$', 1) 
+  end as mail
+  from st_vw;
+
+select * from mail_redacted_vw1;
+=========================================
+
+create view mail_redacted_vw2 as
+select
+  `upper(name)` as name,
+  case
+    when 'hr1_user@xyz.com' = 'hr_user@xyz.com' then email
+    else regexp_extract(email, '^.*@(.*)$', 1) 
+  end as mail
+  from st_vw;
+
+select * from mail_redacted_vw2;
+
+
+============================================================
+
+
+
+----lateral view
+
+-- create temp view
+create or replace temp view users as
+select * from values
+  ('alice', array('alice@example.com', 'a.smith@example.com')),
+  ('bob', array('bob@example.com'))
+as users(name, emails);
+
+-- using lateral view with explode
+select name, email
+from users
+lateral view explode(emails) t as email;
+
+
+------------------------------------------------
+
+select name, explode(emails) as mail
+from users;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
