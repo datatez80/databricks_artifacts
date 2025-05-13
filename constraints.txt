@@ -1,0 +1,20 @@
+create database db2;
+use db2;
+drop table student;
+drop table department;
+create table student(sid int primary key,
+		     sname varchar(20) not null,
+		     sdid int,
+		     foreign key(sdid) references department(did));
+
+insert into student values(1,'Ram',10);
+insert into student values(2,'Ram',20);
+
+create table department(did int primary key,
+			dname varchar(20));
+insert into department values(10,'dscience');
+insert into department values(20,'genai');
+
+
+alter table student add constraint sid_check check(sid>0)
+insert into student values(-1,'ram',20)
