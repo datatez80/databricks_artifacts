@@ -1,0 +1,56 @@
+Top Selling Nations
+
+
+SELECT 
+    n.n_name AS nation,
+    SUM(l.l_extendedprice * (1 - l.l_discount)) AS revenue
+FROM 
+    lineitem l
+JOIN 
+    orders o ON l.l_orderkey = o.o_orderkey
+JOIN 
+    customer c ON o.o_custkey = c.c_custkey
+JOIN 
+    nation n ON c.c_nationkey = n.n_nationkey
+GROUP BY 
+    n.n_name
+ORDER BY 
+    revenue DESC
+LIMIT 10;
+
+
+====
+
+average order value
+
+SELECT
+  YEAR(o_orderdate) AS year,
+  ROUND(AVG(l_extendedprice * (1 - l_discount)), 2) AS avg_order_value
+FROM orders o
+JOIN lineitem l ON o.o_orderkey = l.l_orderkey
+GROUP BY YEAR(o_orderdate)
+ORDER BY year
+
+
+===
+
+order status
+
+SELECT
+  o_orderstatus,
+  COUNT(*) AS order_count
+FROM orders
+GROUP BY o_orderstatus
+
+
+======
+
+revenue over time
+
+SELECT
+  o_orderdate AS order_date,
+  SUM(l_extendedprice * (1 - l_discount)) AS revenue
+FROM orders o
+JOIN lineitem l ON o.o_orderkey = l.l_orderkey
+GROUP BY o_orderdate
+ORDER BY o_orderdate
