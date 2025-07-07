@@ -1,0 +1,334 @@
+WITH file_data_cte AS (
+    SELECT *
+    FROM json.`/Volumes/workspace/default/transactions_source/good_data_1.json`
+)
+SELECT *
+FROM file_data_cte
+WHERE amount > 100;
+
+DROP TABLE IF EXISTS employee_data;
+CREATE TABLE employee_data (
+  id INT,
+  name STRING,
+  city STRING,
+  department STRING,
+  salary INT
+);
+
+INSERT INTO employee_data VALUES
+(1, 'Alice', 'New York', 'Sales', 60000),
+(2, 'Bob', 'London', 'Marketing', 75000),
+(3, 'Charlie', 'Paris', 'IT', 80000),
+(1, 'Alice', 'New York', 'Sales', 60000), -- Exact duplicate of row 1
+(4, 'David', NULL, 'HR', 55000),          -- NULL city
+(5, 'Eve', 'Berlin', 'Finance', 90000),
+(2, 'Bob', 'London', 'Marketing', 75000), -- Exact duplicate of row 2
+(6, 'Frank', 'Sydney', 'IT', NULL),      -- NULL salary
+(1, 'Alice', 'Boston', 'Sales', 62000),  -- Duplicate 'id' and 'name', different 'city' and 'salary'
+(7, 'Grace', 'Tokyo', 'Sales', 68000),
+(8, 'Heidi', 'Oslo', 'Finance', 92000),
+(9, 'Ivan', 'New York', 'Sales', 60000), -- Different 'id', same 'name', 'city', 'department', 'salary' as Alice
+(10, 'Alice', 'New York', 'Confidential', 60000); -- Alice is also in 'Confidential' department
+
+SELECT count_if(col % 2 = 0) FROM VALUES (NULL), (0), (1), (2), (2), (3) AS tab(col);
+
+SELECT count_if(DISTINCT col % 2 = 0) FROM VALUES (NULL), (0), (1), (2), (2), (3) AS tab(col);
+
+
+SELECT
+  COUNT_IF(city = 'New York') AS count_new_york,
+  COUNT_IF(salary IS NULL) AS count_null_salaries,
+  COUNT_IF(id > 5 AND department = 'IT') AS count_id_gt_5_and_it
+FROM employee_data;
+
+SELECT
+  COUNT(*) AS total_rows,                         -- Counts all rows (including those with NULLs in any column)
+  COUNT(id) AS count_id_not_null,                 -- Counts non-NULL 'id' values
+  COUNT(city) AS count_city_not_null,             -- Counts non-NULL 'city' values
+  COUNT(salary) AS count_salary_not_null         -- Counts non-NULL 'salary' values
+FROM employee_data;
+
+
+SELECT 
+   COUNT(salary) FILTER (WHERE salary >60000) AS count_salary_gt_60000,
+   COUNT(*) FILTER (WHERE city IS NULL) AS count_rows_where_city_is_null
+FROM employee_data;
+
+
+SELECT 
+   COUNT(CASE WHEN salary > 60000 THEN 1 END) AS count_salary_gt_60000,
+   COUNT(CASE WHEN city IS NULL THEN 1 END) AS count_rows_where_city_is_null
+FROM employee_data;
+
+SELECT 
+   COUNT(distinct salary) AS count_salary
+FROM employee_data;
+
+SELECT 
+   COUNT(all salary) AS count_salary
+FROM employee_data;
+
+SELECT 
+   COUNT(salary) AS count_salary
+FROM employee_data;
+
+SELECT COUNT(city,salary) from employee_data;
+SELECT COUNT(*) from employee_data;
+
+SELECT count(col1, col2)
+    FROM VALUES (NULL, NULL), (5, NULL), (5, 1), (5, 2), (5, 2), (NULL, 2), (20, 2) AS tab(col1, col2);
+
+SELECT count(DISTINCT col1, col2)
+    FROM VALUES (NULL, NULL), (5, NULL), (5, 1), (5, 2), (NULL, 2), (20, 2) AS tab(col1, col2);
+
+
+
+
+
+
+DROP TABLE IF EXISTS employee_data2;
+CREATE TABLE employee_data2 (
+  id INT,
+  name STRING,
+  city STRING,
+  department STRING,
+  salary INT,
+  entry_timestamp STRING -- Added for ordering in deduplication
+);
+
+INSERT INTO employee_data2 VALUES
+(1, 'Alice', 'New York', 'Sales', 60000, '2023-01-01 10:00:00'),
+(2, 'Bob', 'London', 'Marketing', 75000, '2023-01-01 11:00:00'), -- Exact duplicate
+(3, 'Charlie', 'Paris', 'IT', 80000, '2023-01-01 12:00:00'),
+(1, 'Alice', 'New York', 'Sales', 60000, '2023-01-01 10:00:00'), -- Exact duplicate
+(4, 'David', NULL, 'HR', 55000, '2023-01-02 09:00:00'),
+(5, 'Eve', 'Berlin', 'Finance', 90000, '2023-01-02 10:00:00'),
+(2, 'Bob', 'London', 'Marketing', 75000, '2023-01-01 11:00:00'), -- Exact duplicate
+(6, 'Frank', 'Sydney', 'IT', NULL, '2023-01-03 08:00:00'),
+(1, 'Alice', 'Boston', 'Marketing', 62000, '2023-01-01 10:00:00'),  -- Duplicate 'id' and 'name'
+(7, 'Grace', 'Tokyo', 'Sales', 68000, '2023-01-03 12:00:00'),
+(8, 'Heidi', 'Oslo', 'Finance', 92000, '2023-01-04 09:00:00'),
+(10, 'Alice', 'New York', 'Confidential', 60000, '2023-01-04 10:00:00'),
+(11, 'Zoe', 'Miami', 'HR', 58000, '2023-01-05 08:00:00'),
+(11, 'Zoe', 'Miami', 'HR', 58000, '2023-01-05 08:00:00'), -- Exact duplicate
+(12, 'Alice', 'Dallas', 'Marketing', 65000, '2023-01-05 09:00:00'),
+(9, 'Ivan', 'New York', 'Confidential', 60000, '2023-01-04 10:00:00'); 
+
+
+SELECT COUNT(*) FROM employee_data2;
+
+-- primary key is unique across all rows
+
+SELECT id,count(*) as row_count
+FROM employee_data2
+GROUP BY id
+HAVING row_count > 1;
+
+--  Validate that a field is associated with just one unique value in another field
+
+SELECT
+  id,
+  COUNT(DISTINCT department) AS unique_departments
+FROM employee_data2
+GROUP BY id
+HAVING COUNT(DISTINCT department) > 1;
+
+-- Validate that a value is not present in a specific field
+SELECT
+  COUNT(*) AS count_of_confidential_departments
+FROM employee_data2
+WHERE department != 'Confidential';
+
+
+-- Create a new table from an existing table while removing duplicate rows
+
+CREATE TABLE deduplicated_employee_data_full
+  AS 
+  SELECT DISTINCT * 
+  FROM employee_data2;
+
+-- Deduplicate rows from an existing Delta Lake table
+INSERT OVERWRITE employee_data2
+  SELECT DISTINCT(*)
+  FROM employee_data2;
+
+SELECT * FROM employee_data2 ORDER BY id;
+
+
+-- Deduplicate a row based on specific columns
+SELECT
+    id,
+    entry_timestamp,
+    count(*)
+FROM employee_data2
+WHERE id IS NOT NULL
+GROUP BY id,entry_timestamp ; 
+
+
+INSERT OVERWRITE employee_data2
+SELECT
+    id,
+    max(name),
+    max(city),
+    max(department),
+    max(salary),
+    entry_timestamp
+FROM employee_data2
+WHERE id IS NOT NULL
+GROUP BY id,entry_timestamp;
+
+
+=============================
+
+-- Cast a column to a timestamp
+
+SELECT 
+  entry_timestamp AS original_value,
+  CAST(entry_timestamp AS TIMESTAMP) AS as_timestamp
+FROM employee_data2;
+
+-- Extract Calendar Data from a Timestamp
+
+SELECT 
+  CAST(entry_timestamp AS TIMESTAMP) AS event_time,
+  YEAR(entry_timestamp) AS year_part,
+  MONTH(entry_timestamp) AS month_part,
+  DAY(entry_timestamp) AS day_part,
+  DATE_FORMAT(entry_timestamp, 'EEEE') AS day_of_week,
+  HOUR(entry_timestamp) AS hour_part
+FROM employee_data2;
+
+
+-- Extract a Specific Pattern from a String Column
+
+SELECT 
+  city,
+  REGEXP_EXTRACT(city, '(\\w+)', 1) AS first_word
+FROM employee_data2;
+
+SELECT 
+  city,
+  UPPER(SUBSTRING(REGEXP_REPLACE(city, ' ', ''), 1, 3)) AS city_code
+FROM employee_data2;
+
+========================================================================================
+
+SELECT COUNT(*) FROM employee_data2; 
+
+-- Sample Struct Creation for Demo
+SELECT 
+  named_struct('city', 'New York', 'zip', '10001') AS address;
+
+SELECT 
+  address.city AS city_name,
+  address.zip AS postal_code
+FROM (
+  SELECT named_struct('city', 'New York', 'zip', '10001') AS address
+);
+
+
+SELECT 
+  array('AI', 'ML', 'Data') AS skills;
+
+SELECT 
+  size(skills) AS skill_count,
+  array_contains(skills, 'AI') AS has_ai
+FROM (
+  SELECT array('AI', 'ML', 'Data') AS skills
+);
+
+SELECT explode(array('AI', 'ML', 'Data')) AS each_skill;
+
+SELECT sort_array(array(5, 2, 9, 1)) AS sorted_numbers;
+
+SELECT array_distinct(array('AI', 'ML', 'AI', 'Data')) AS unique_skills;
+
+SELECT array_union(array('AI', 'ML'), array('ML', 'Data')) AS combined_skills;
+
+SELECT array_intersect(array('AI', 'ML', 'Data'), array('ML', 'Data', 'Cloud')) AS common_skills;
+
+SELECT array_except(array('AI', 'ML', 'Data'), array('ML')) AS remaining_skills;
+
+SELECT element_at(array('AI', 'ML', 'Data'), 2) AS second_skill;
+
+SELECT 
+  array_distinct(
+    sort_array(
+      array_union(array('AI', 'ML'), array('ML', 'Data', 'AI'))
+    )
+  ) AS final_skills;
+
+
+============================================================================================
+
+-- Parse JSON string as struct
+-- Logs, API responses, or semi-structured data arriving as JSON
+
+SELECT 
+  '{"name": "Alice", "city": "London", "salary": 75000}' AS json_str;
+
+SELECT 
+  parsed.name AS employee_name,
+  parsed.city AS employee_city,
+  parsed.salary AS employee_salary
+FROM (
+  SELECT 
+    from_json('{"name": "Alice", "city": "London", "salary": 75000}', 
+              'name STRING, city STRING, salary INT') AS parsed
+);
+
+
+--  IoT device reading or API log
+
+SELECT 
+  from_json('{
+    "device_id": "sensor_1",
+    "location": {"lat": 51.5, "lon": -0.12},
+    "readings": [ {"type": "temp", "value": 22}, {"type": "humidity", "value": 55} ]
+  }',
+  'device_id STRING, location STRUCT<lat DOUBLE, lon DOUBLE>, readings ARRAY<STRUCT<type STRING, value DOUBLE>>'
+  ) AS device_data;
+
+
+  SELECT 
+  device_data.device_id,
+  device_data.location.lat AS latitude,
+  device_data.location.lon AS longitude
+FROM (
+  SELECT 
+    from_json('{
+      "device_id": "sensor_1",
+      "location": {"lat": 51.5, "lon": -0.12},
+      "readings": [ {"type": "temp", "value": 22}, {"type": "humidity", "value": 55} ]
+    }',
+    'device_id STRING, location STRUCT<lat DOUBLE, lon DOUBLE>, readings ARRAY<STRUCT<type STRING, value DOUBLE>>'
+    ) AS device_data
+);
+
+
+
+-- Store Complex Nested JSON as a Single Column
+-- Event payload, Audit trails,APIs storing nested data
+
+SELECT 
+  to_json(named_struct('user', 'Bob', 'details', named_struct('city', 'Paris', 'dept', 'IT'))) AS json_payload;
+
+-- Parse JSON Arrays from String
+SELECT 
+  from_json('["AI", "ML", "Data"]', 'ARRAY<STRING>') AS skills_array;
+
+--   Explode JSON Array for Individual Processing
+
+SELECT explode(from_json('["AI", "ML", "Data"]', 'ARRAY<STRING>')) AS each_skill;
+
+===================================================================================================================
+
+
+
+
+
+
+
+  
+
+
